@@ -345,6 +345,16 @@ class Node:
         self.children = None
         return
 
+    def as_tree(self, *, add_self=True, predicate=None) -> "Tree":
+        """."""
+        new_tree = Tree()
+        if add_self:
+            root = new_tree.add(self)
+        else:
+            root = new_tree._root
+        root.copy_from(self, predicate=predicate)
+        return new_tree
+
     def copy_from(self, src_node: "Node", *, predicate=None):
         """Append copies of all source children to self."""
         assert not self.children

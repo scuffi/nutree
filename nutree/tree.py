@@ -12,7 +12,7 @@ from .node import AmbigousMatchError, IterMethod, Node
 class Tree:
     """"""
 
-    def __init__(self, name: str = None, *, factory=None):
+    def __init__(self, name: str = None, *, factory=None, calc_data_id=None):
         self._lock = threading.RLock()
         self.name = str(id(self) if name is None else name)
         self._node_factory = factory or Node
@@ -21,6 +21,7 @@ class Tree:
         self._nodes_by_data_id = {}
         #: true when at least one custom data_id was passed
         self._use_custom_data_ids = None
+        self._calc_data_id_hook = calc_data_id
 
     def __repr__(self):
         return f"Tree<{self.name!r}>"
@@ -71,6 +72,8 @@ class Tree:
         # with an unpredictable random value. Although they remain constant within an
         # individual Python process, they are not predictable between repeated invocations
         # of Python.
+        if self._calc_data_id_hook:
+            return self._calc_data_id_hook(self, data)
         return hash(data)
 
     @property
@@ -100,12 +103,17 @@ class Tree:
     add = add_child
 
     def copy(self, *, name=None, predicate=None) -> "Tree":
+        """Return a shallow copy of the tree."""
         if name is None:
             name = f"Copy of {self}"
         new_tree = Tree(name)
         with self:
             new_tree._root.copy_from(self._root, predicate=predicate)
         return new_tree
+
+    def clear(self) -> None:
+        """Remove all nodes from the tree"""
+        self._root.remove_children()
 
     def _register(self, node: "Node"):
         assert node.tree is self
@@ -173,9 +181,6 @@ class Tree:
 
     #: Alias for find_first
     find = find_first
-
-    def intersect(self, other):
-        raise NotImplementedError
 
     def to_dict(self, *, mapper=None) -> List[Dict]:
         """Return a list of child node's `node.to_dict()`."""
