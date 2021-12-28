@@ -241,6 +241,57 @@ class Tree:
     def on(self, event_name: str, callback):
         raise NotImplementedError
 
+    # --------------------------------------------------------------------------
+
+    def isdisjoint(self, other: "Tree") -> bool:
+        """Return True if the set has no elements in common with other.
+
+        Sets are disjoint if and only if their intersection is the empty set.
+        """
+        pass
+
+    def issubset(self, other: "Tree") -> bool:
+        """Test whether every element in other is in the set."""
+        pass
+
+    def union(self, other: "Tree") -> "Tree":
+        """Return a new set with elements from the set and all others."""
+
+    def intersection(self, other: "Tree") -> "Tree":
+        """Return a new set with elements common to the set and all others."""
+
+    def difference(self, other: "Tree") -> "Tree":
+        """Return a new set with elements in the set that are not in the others."""
+
+    def symmetric_difference(self, other: "Tree") -> "Tree":
+        """Return a new set with elements in either the set or other but not both."""
+
+    def update(self, other: "Tree"):
+        """Update the set, adding elements from all others."""
+
+    def intersection_update(self, other: "Tree"):
+        """Update the set, keeping only elements found in it and all others."""
+
+    def difference_update(self, other: "Tree"):
+        """Update the set, removing elements found in others."""
+
+    def symmetric_difference_update(self, other: "Tree"):
+        """Update the set, keeping only elements found in either set, but not in both."""
+
+    # def add(self, elem):
+    #     """Add element elem to the set."""
+
+    def remove(self, elem):
+        """Remove element elem from the set. Raises KeyError if elem is not contained in the set."""
+
+    def discard(self, elem):
+        """Remove element elem from the set if it is present."""
+
+    def pop(self):
+        """Remove and return an arbitrary element from the set. Raises KeyError if the set is empty."""
+
+    # --------------------------------------------------------------------------
+
     def _self_check(self):
         """Internal method to check data structure sanity."""
         node_list = []
