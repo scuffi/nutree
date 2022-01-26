@@ -2,13 +2,11 @@
 Search and Navigate
 -------------------
 
-..
-    .. toctree::
-    :hidden:
+.. py:currentmodule:: nutree
 
 
-Search and Navigate
--------------------
+Navigate
+--------
 
 ::
 
@@ -18,20 +16,25 @@ Search and Navigate
     assert tree.first_child is records_node
 
     assert len(records_node.children) == 2
-    assert records_node.level == 1
-
-    assert tree.find("Records") is records_node
-    assert tree.find("records") is None
+    assert records_node.depth == 1
 
     n = records_node.first_child
     assert records_node.find("Let It Be") is n
 
     assert n.name == "Let It Be"
-    assert n.level == 2
+    assert n.depth == 2
     assert n.parent is records_node
     assert n.prev_sibling is None
     assert n.next_sibling.name == "Get Yer Ya-Ya's Out!"
     assert not n.children
+
+Search
+------
+
+::
+
+    assert tree.find("Records") is records_node
+    assert tree.find("records") is None
 
     res = tree.find_all(match=r"[GL]et.*")
     print(res)
@@ -44,11 +47,15 @@ Search and Navigate
     assert res.name == "Let It Be"
 
 
-Iteration
+Traversal
 ---------
 
-Iterators are available for the hole tree or by branch. Different travesal
-methods are supported ::
+**Iteration**
+
+Iterators are the most performant and memory efficient way to traverse the tree.
+
+Iterators are available for the whole tree or by branch (i.e. starting at a node). 
+Different travesal methods are supported. ::
 
     for node in tree:
         # Depth-first, pre-order by default
@@ -58,4 +65,54 @@ methods are supported ::
         ...
 
     # Walk a branch, starting at a distinct node
-    res = list(node.iterator(include_self=True))
+    res = list(node.iterator(add_self=True))
+
+
+**Visit**
+
+The :meth:`~nutree.tree.Tree.visit` method is an alternative way to traverse tree 
+structures with a little bit more control. 
+In this case, a callback function is invoked for every node.
+
+The callback may return (or raise) :class:`~nutree.common.SkipChildren` to 
+prevent visiting of the descendant nodes. |br|
+The callback may return (or raise) :class:`~nutree.common.StopTraversal` to 
+stop traversal immediately. An optional return value may be passed to the 
+constructor. 
+
+::
+
+    from nutree import Tree, SkipChildren, StopTraversal
+
+    def callback(node, memo):
+        if node.name == "secret":
+            # Prevent visiting the child nodes:
+            return SkipChildren
+        if node.data.foobar == 17:
+            raise StopTraversal("found it")
+
+    # `res` contains the value passed to the `StopTraversal` constructor
+    res = tree.visit(callback)  # res == "found it"
+
+The `memo` argument contains an empty dict by default, which is discarded after
+traversal. This may be handy to cache some calculated values during iteration
+for example. |br|
+It is also possible to pass in the `memo` argument, in order to access the data
+after the call::
+
+    def callback(node, memo):
+        if node.data.foobar > 10:
+            memo.append(node)
+
+    hits = []
+    tree.visit(callback, memo=hits)
+
+We could achieve the same using a closure if the callback is defined in the 
+same scope as the `visit()` call::
+
+    hits = []
+    def callback(node, memo):
+        if node.data.foobar > 10:
+            hits.append(node)
+
+    tree.visit(callback)

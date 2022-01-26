@@ -42,16 +42,16 @@ nutree
    n = tree.add("Books")
    n.add("The Little Prince")
 
-   print(tree.format())
+   tree.print()
 
 ::
 
    Tree<'Store'>
-   ├── 'Records'
-   │   ├── 'Let It Be'
-   │   ╰── "Get Yer Ya-Ya's Out!"
-   ╰── 'Books'
-       ╰── 'The Little Prince'
+   ├─── 'Records'
+   │    ├─── 'Let It Be'
+   │    ╰─── "Get Yer Ya-Ya's Out!"
+   ╰─── 'Books'
+        ╰─── 'The Little Prince'
 
 
 Tree nodes wrap the data and also expose methods for navigation, searching,
@@ -68,14 +68,24 @@ iteration, ... ::
 
    Node<'Let It Be', data_id=510268653885439170>
 
+Nodes may be strings or arbitrary objects::
+
+   alice = Person("Alice", age=23, guid="{123-456}")
+   tree.add(alice)
+
+   # Lookup nodes by object, data_id, name pattern, ...
+   assert isinstance(tree[alice].data, Person)
+
+   del tree[alice]
 
 
 Nutree Facts
 ============
 
+  * Handle multiple references of single objects ('clones')
   * Search by name pattern, id, or object reference
-  * Handle multiple references of single objects
-  * Store plain strings or arbitrary objects
+  * Unobtrusive handling of arbitrary objects
+  * Nodes can be plain strings or objects
   * Different traversal methods
   * (De)Serialize to JSON
   * Pretty print
@@ -93,7 +103,7 @@ Nutree Facts
 
 .. |travis_badge| image:: https://travis-ci.com/mar10/nutree.svg?branch=main
    :alt: Build Status
-   :target: https://travis-ci.com/mar10/nutree
+   :target: https://app.travis-ci.com/github/mar10/nutree
 
 .. |pypi_badge| image:: https://img.shields.io/pypi/v/nutree.svg
    :alt: PyPI Version

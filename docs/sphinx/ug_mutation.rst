@@ -2,9 +2,7 @@
 Mutation
 --------
 
-..
-    .. toctree::
-    :hidden:
+.. py:currentmodule:: nutree
 
 Some in-place modifications are available::
 
@@ -21,11 +19,15 @@ Some in-place modifications are available::
     node.remove_children()
     node.sort_children()
 
+    # del will call `remove()`
+    del tree["A"]
+
 Filtering and set-like operations usually return the result as a new tree
 instance::
 
     def pred(node):
-        return "q" in node.data.name.lower()
+        # Return false to skip node and its children
+        return "q" in node.data.age >= 18
 
     tree_2 = tree.copy(predicate=pred)
 
@@ -33,10 +35,3 @@ instance::
     assert tree_2.first_node.data is tree.first_node.data  # ... reference the same data
     assert tree_2.first_node == tree.first_node            # and evaluate as 'equal'
 
-Direkt modification of `node.node_id`, `node.data_id` would mess up the internal
-bookkeeping.
-
-.. note:: 
-    If `node.data` is modified, this _may_ change the result of `hash(node.data)`.
-
-.. todo::  Describe solutions.

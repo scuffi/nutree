@@ -1,6 +1,6 @@
 # ![logo](https://raw.githubusercontent.com/mar10/nutree/main/docs/nutree_48x48.png) nutree
 
-[![Build Status](https://travis-ci.com/mar10/nutree.svg?branch=main)](https://travis-ci.com/mar10/nutree)
+[![Build Status](https://travis-ci.com/mar10/nutree.svg?branch=main)](https://app.travis-ci.com/github/mar10/nutree)
 [![Latest Version](https://img.shields.io/pypi/v/nutree.svg)](https://pypi.python.org/pypi/nutree/)
 [![License](https://img.shields.io/pypi/l/nutree.svg)](https://github.com/mar10/nutree/blob/main/LICENSE.txt)
 [![Documentation Status](https://readthedocs.org/projects/nutree/badge/?version=latest)](http://nutree.readthedocs.io/)
@@ -16,9 +16,10 @@ yet powerful, API.
 
 **Nutree Facts**
 
+Handle multiple references of single objects ('clones')<br>
 Search by name pattern, id, or object reference<br>
-Handle multiple references of single objects<br>
-Store plain strings or arbitrary objects<br>
+Unobtrusive handling of arbitrary objects<br>
+Nodes can be plain strings or objects<br>
 Different traversal methods<br>
 (De)Serialize to JSON<br>
 Pretty print<br>
@@ -48,16 +49,16 @@ n.add("Get Yer Ya-Ya's Out!")
 n = tree.add("Books")
 n.add("The Little Prince")
 
-print(tree.format())
+tree.print()
 ```
 
 ```ascii
 Tree<'Store'>
-├── 'Records'
-│   ├── 'Let It Be'
-│   ╰── "Get Yer Ya-Ya's Out!"
-╰── 'Books'
-    ╰── 'The Little Prince'
+├─── 'Records'
+│    ├─── 'Let It Be'
+│    ╰─── "Get Yer Ya-Ya's Out!"
+╰─── 'Books'
+     ╰─── 'The Little Prince'
 ```
 
 Tree nodes wrap the data and also expose methods for navigation, searching,
@@ -73,6 +74,18 @@ print(records_node.first_child)
 
 ```ascii
 Node<'Let It Be', data_id=510268653885439170>
+```
+
+Nodes may be strings or arbitrary objects:
+
+```py
+alice = Person("Alice", age=23, guid="{123-456}")
+tree.add(alice)
+
+# Lookup nodes by object, data_id, name pattern, ...
+assert isinstance(tree[alice].data, Person)
+
+del tree[alice]
 ```
 
 [Read the Docs](https://nutree.readthedocs.io/) for more.

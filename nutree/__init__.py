@@ -16,15 +16,25 @@ NOTE:
     "3.0.0a4" seems not to work in this case!
 """
 # flake8: noqa
-__version__ = "0.0.1-a3"
+__version__ = "0.1.1-a1"
 
-from .node import AmbigousMatchError, IterMethod, Node, TreeError, UniqueConstraintError
+from .common import (
+    AmbigousMatchError,
+    IterMethod,
+    SkipChildren,
+    StopTraversal,
+    TreeError,
+    UniqueConstraintError,
+)
+from .node import Node
 from .tree import Tree
 
 __all__ = [
     Tree,
     Node,
     IterMethod,
+    SkipChildren,
+    StopTraversal,
     TreeError,
     AmbigousMatchError,
     UniqueConstraintError,

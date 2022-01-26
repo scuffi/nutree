@@ -3,14 +3,26 @@ import json
 import threading
 from typing import IO, Any, Dict, Generator, List, Union
 
-from .node import AmbigousMatchError, IterMethod, Node
+from .common import (
+    AmbigousMatchError,
+    IterMethod,
+    PredicateCallbackType,
+    TraversalCallbackType,
+)
+from .node import Node
+
+_DELETED_TAG = "<deleted>"
 
 
 # ------------------------------------------------------------------------------
 # - Tree
 # ------------------------------------------------------------------------------
 class Tree:
-    """"""
+    """
+    A Tree object is a shallow wrapper around a single, invisible system root node.
+    All visible toplevel nodes are direct children of this root node.
+    Trees expose methods to iterate, search, copy, filter, serialize, etc.
+    """
 
     def __init__(self, name: str = None, *, factory=None, calc_data_id=None):
         self._lock = threading.RLock()
@@ -19,22 +31,23 @@ class Tree:
         self._root = _SystemRootNode(self)
         self._node_by_id = {}
         self._nodes_by_data_id = {}
-        #: true when at least one custom data_id was passed
-        self._use_custom_data_ids = None
+        #: Optional callback that calculates data_ids from data objects
+        #: hash(data) is used by default
         self._calc_data_id_hook = calc_data_id
 
     def __repr__(self):
         return f"Tree<{self.name!r}>"
 
     def __contains__(self, data):
-        # TODO: treat data as data_id?
-        return self._calc_data_id(data) in self._nodes_by_data_id
+        """Implement ``data in tree`` syntax to check for node existence."""
+        return bool(self.find_first(data))
 
-    def __len__(self):
-        """Return the number of nodes (also makes empty trees falsy)."""
-        return self.count
+    def __delitem__(self, data: object) -> None:
+        """Implement ``del tree[data]`` syntax to remove nodes."""
+        self[data].remove()
 
     def __enter__(self):
+        """Implement ``with tree: ...`` syntax to acquire an RLock."""
         self._lock.acquire()
         return self
 
@@ -42,14 +55,24 @@ class Tree:
         self._lock.release()
         return
 
-    def __getitem__(self, data: object) -> "Node":
-        """Implement `tree[data]` lookup.
+    def __eq__(self, other) -> bool:
+        raise NotImplementedError("Use `is` or `tree.compare()` instead.")
 
-        Note that AmbigousMatchError is raised if multiple matches are found.
-        Use tree.find_all() or tree.find_first() instead to resolve this.
+    def __getitem__(self, data: object) -> "Node":
+        """Implement ``tree[data]`` syntax to lookup a node.
+
+        :class:`~nutree.common.AmbigousMatchError` is raised if multiple matches
+        are found.
+        Use :meth:`find_all` or :meth:`find_first` instead to resolve this.
         """
-        # TODO: treat data as data_id?
-        res = self.find_all(data)
+        # Treat data as data_id
+        if isinstance(data, Node):
+            raise ValueError(f"Expected data instance or data_id: {data}")
+        elif type(data) in (int, str) and data in self._nodes_by_data_id:
+            res = self.find_all(data_id=data)
+        else:
+            res = self.find_all(data)
+
         if not res:
             raise KeyError(f"{data!r}")
         if len(res) == 1:
@@ -59,15 +82,21 @@ class Tree:
             "Use tree.find_all() or tree.find_first() to resolve this."
         )
 
-    def __eq__(self, other) -> bool:
-        raise NotImplementedError("Use `is` or `tree.compare()` instead.")
+    # def __iadd__(self, other) -> None:
+    #     """Support `tree += node(s)` syntax"""
+    #     self._root += other
 
-    def iterator(self, method: IterMethod = IterMethod.PRE_ORDER, *, predicate=None):
-        return self._root.iterator(method=method, predicate=predicate)
-
-    __iter__ = iterator
+    def __len__(self):
+        """Make ``len(tree)`` return the number of nodes (also makes empty trees falsy)."""
+        return len(self._node_by_id)
 
     def _calc_data_id(self, data) -> int:
+        """Called internally to calculate `data_id` for a `data` object.
+
+        This value is used to llokup nodes by data, identify clones, and for
+        (de)serlialization. It defaults to ``hash(data)`` but may be overloaded
+        when the data objects have meaningful keys that should be used instead.
+        """
         # Note By default, the __hash__() values of str and bytes objects are “salted”
         # with an unpredictable random value. Although they remain constant within an
         # individual Python process, they are not predictable between repeated invocations
@@ -76,34 +105,128 @@ class Tree:
             return self._calc_data_id_hook(self, data)
         return hash(data)
 
+    def _register(self, node: "Node"):
+        assert node._tree is self
+        # node._tree = self
+        assert node._node_id and node._node_id not in self._node_by_id, f"{node}"
+        self._node_by_id[node._node_id] = node
+        try:
+            self._nodes_by_data_id[node._data_id].append(node)
+        except KeyError:
+            self._nodes_by_data_id[node._data_id] = [node]
+
+    def _unregister(self, node, *, clear=True):
+        """Unlink node from this tree (children must be unregistered first)."""
+        assert node._node_id in self._node_by_id, f"{node}"
+        del self._node_by_id[node._node_id]
+
+        clones = self._nodes_by_data_id[node._data_id]
+        clones.remove(node)
+        if not clones:
+            del self._nodes_by_data_id[node._data_id]
+
+        node._tree = None
+        node._parent = None
+        if clear:
+            node._data = _DELETED_TAG
+            node._data_id = None
+            node._node_id = None
+            node._children = None
+        return
+
     @property
     def count(self):
-        return len(self._node_by_id)
+        """Return the total number of nodes."""
+        return len(self)
+
+    @property
+    def count_data(self):
+        """Return the total number of `unique` nodes.
+
+        Multiple references to the same data object ('clones') are only counted
+        once.
+        This is different from :meth:`count`, which returns the number of `all`
+        nodes.
+        """
+        return len(self._nodes_by_data_id)
 
     @property
     def first_child(self):
+        """Return the first top-level node."""
         return self._root.first_child
 
     @property
     def last_child(self):
+        """Return the last top-level node."""
         return self._root.last_child
 
-    def format(self, *, repr=None, style=None, title=True):
-        prefix = ""
-        if title:
-            prefix = f"{self}\n" if title is True else f"{title}\n"
-        return prefix + self._root.format(repr=repr, style=style)
+    def calc_height(self) -> int:
+        """Return the maximum depth of all nodes."""
+        return self._root.calc_height()
 
-    def add_child(self, child: Any, *, data_id=None, node_id=None, before=None):
+    def visit(
+        self, callback: TraversalCallbackType, *, method=IterMethod.PRE_ORDER, memo=None
+    ):
+        """Call `callback(node, memo)` for all nodes.
+
+        See Node's :meth:`~nutree.node.Node.visit` method for details.
+        """
+        return self._root.visit(callback, add_self=False, method=method, memo=memo)
+
+    def iterator(self, method: IterMethod = IterMethod.PRE_ORDER):
+        """Traverse tree structure and yield nodes.
+
+        See Node's :meth:`~nutree.node.Node.iterator` method for details.
+        """
+        return self._root.iterator(method=method)
+
+    __iter__ = iterator
+
+    def format_iter(self, *, repr=None, style=None, title=None):
+        """This variant of :meth:`format` returns a line generator."""
+        if title is None:
+            title = False if style == "list" else True
+        if title:
+            yield f"{self}" if title is True else f"{title}"
+        has_title = title is not False
+        yield from self._root.format_iter(repr=repr, style=style, add_self=has_title)
+
+    def format(self, *, repr=None, style=None, title=None, join="\n"):
+        """Return a pretty string representation of the tree hiererachy.
+
+        See Node's :meth:`~nutree.node.Node.format` method for details.
+        """
+        lines_iter = self.format_iter(repr=repr, style=style, title=title)
+        return join.join(lines_iter)
+
+    def print(self, *, repr=None, style=None, title=None, join="\n"):
+        """Convenience method that simply runs print(self. :meth:`format()`)."""
+        print(self.format(repr=repr, style=style, title=title, join=join))
+
+    def add_child(
+        self, child: Any, *, data_id=None, node_id=None, before=None
+    ) -> "Node":
+        """Add a toplevel node.
+
+        See Node's :meth:`~nutree.node.Node.add_child` method for details.
+        """
         return self._root.add_child(
             child, data_id=data_id, node_id=node_id, before=before
         )
 
-    #: Alias for `add_child`
+    #: Alias for :meth:`add_child`
     add = add_child
 
-    def copy(self, *, name=None, predicate=None) -> "Tree":
-        """Return a shallow copy of the tree."""
+    def copy(
+        self, *, name: str = None, predicate: PredicateCallbackType = None
+    ) -> "Tree":
+        """Return a shallow copy of the tree.
+
+        New :class:`Tree` and :class:`Node` instances are created.
+        They reference the original data objects.
+
+        See also Node's :meth:`~nutree.node.Node.copy_from` method.
+        """
         if name is None:
             name = f"Copy of {self}"
         new_tree = Tree(name)
@@ -112,40 +235,16 @@ class Tree:
         return new_tree
 
     def clear(self) -> None:
-        """Remove all nodes from the tree"""
+        """Remove all nodes from the tree."""
         self._root.remove_children()
-
-    def _register(self, node: "Node"):
-        assert node.tree is self
-        # node.tree = self
-        assert node.node_id and node.node_id not in self._node_by_id, f"{node}"
-        self._node_by_id[node.node_id] = node
-        try:
-            self._nodes_by_data_id[node.data_id].append(node)
-        except KeyError:
-            self._nodes_by_data_id[node.data_id] = [node]
-
-    def _unregister(self, node, *, clear=True):
-        """Unlink node from this tree."""
-        assert node.node_id in self._node_by_id, f"{node}"
-        del self._node_by_id[node.node_id]
-
-        clones = self._nodes_by_data_id[node.data_id]
-        clones.remove(node)
-        if not clones:
-            del self._nodes_by_data_id[node.data_id]
-
-        node.tree = None
-        if clear:
-            node.data = "<deleted>"
-            node.node_id = None
-            node.data_id = None
-            node.children = None
-        return
 
     def find_all(
         self, data=None, *, match=None, data_id=None, max_results: int = None
     ) -> List["Node"]:
+        """Return a list of matching nodes (list may be empty).
+
+        See also Node's :meth:`~nutree.node.Node.find_all` method.
+        """
         if data is not None:
             assert data_id is None
             data_id = self._calc_data_id(data)
@@ -156,13 +255,19 @@ class Tree:
             if res:
                 return res[max_results:] if max_results else res
             return []
+
         elif match is not None:
             return self._root.find_all(match=match, max_results=max_results)
+
         raise NotImplementedError
 
     def find_first(
         self, data=None, *, match=None, data_id=None, node_id=None
     ) -> Union["Node", None]:
+        """Return the first matching node or `None`.
+
+        See also Node's :meth:`~nutree.node.Node.find_first` method.
+        """
         if data is not None:
             assert data_id is None
             data_id = self._calc_data_id(data)
@@ -179,21 +284,35 @@ class Tree:
             return self._node_by_id.get(node_id)
         raise NotImplementedError
 
-    #: Alias for find_first
+    #: Alias for :meth:`find_first`
     find = find_first
 
+    def sort(self, *, key=None, reverse=False, deep=True):
+        """Sort child nodes recursively.
+
+        `key` defaults to ``attrgetter("name")``, so children are sorted by
+        their string representation.
+        """
+        self._root.sort_children(key=key, reverse=reverse, deep=deep)
+
     def to_dict(self, *, mapper=None) -> List[Dict]:
-        """Return a list of child node's `node.to_dict()`."""
+        """Call Node's :meth:`~nutree.node.Node.to_dict` method for all
+        childnodes and return list of results."""
         res = []
         with self:
-            for n in self._root.children:
+            for n in self._root._children:
                 res.append(n.to_dict(mapper=mapper))
         return res
 
     @classmethod
     def from_dict(cls, obj: List[Dict], *, mapper=None) -> "Tree":
+        """Return a new :class:`Tree` instance from a list of dicts.
+
+        See also :meth:`~nutree.tree.Tree.to_dict` method and
+        Node's :meth:`~nutree.node.Node.find_first` method.
+        """
         new_tree = Tree()
-        new_tree._root.from_dict(obj)
+        new_tree._root.from_dict(obj, mapper=mapper)
         return new_tree
 
     def to_list_iter(self, *, mapper=None) -> Generator[Dict, None, None]:
@@ -201,7 +320,10 @@ class Tree:
         return self._root.to_list_iter(mapper=mapper)
 
     def save(self, fp: IO[str], *, mapper=None) -> None:
-        """Store in a compact JSON file stream."""
+        """Store tree in a compact JSON file stream.
+
+        See also :meth:`to_list_iter` and :meth:`load` methods.
+        """
         with self:
             iter = self.to_list_iter(mapper=mapper)
             # Materialize so we can lock the snapshot.
@@ -234,12 +356,15 @@ class Tree:
 
     @classmethod
     def load(cls, fp: IO[str], *, mapper=None) -> "Tree":
-        """Load from a JSON file stream."""
+        """Create a new :class:`Tree` instance from a JSON file stream.
+
+        See also :meth:`save`.
+        """
         obj = json.load(fp)
         return cls._from_list(obj, mapper=mapper)
 
-    def on(self, event_name: str, callback):
-        raise NotImplementedError
+    # def on(self, event_name: str, callback):
+    #     raise NotImplementedError
 
     # --------------------------------------------------------------------------
 
@@ -293,24 +418,31 @@ class Tree:
     # --------------------------------------------------------------------------
 
     def _self_check(self):
-        """Internal method to check data structure sanity."""
+        """Internal method to check data structure sanity.
+
+        This is slow: only use for debugging, e.g. ``assert tree._self_check``.
+        """
         node_list = []
         for node in self:
             node_list.append(node)
-            assert node.tree is self, node
-            # assert node.data_id == self._calc_data_id(node.data), node
-            assert node.data_id in self._nodes_by_data_id, node
-            assert node.node_id == id(node), f"{node}: {node.node_id} != {id(node)}"
+            assert node._tree is self, node
+            assert node in node._parent._children, node
+            # assert node._data_id == self._calc_data_id(node.data), node
+            assert node._data_id in self._nodes_by_data_id, node
+            assert node._node_id == id(node), f"{node}: {node._node_id} != {id(node)}"
+            assert (
+                node._children is None or len(node._children) > 0
+            ), f"{node}: {node._children}"
 
         assert len(self._node_by_id) == len(node_list)
 
-        count_2 = 0
+        clone_count = 0
         for data_id, nodes in self._nodes_by_data_id.items():
-            count_2 += len(nodes)
+            clone_count += len(nodes)
             for node in nodes:
-                assert node.node_id in self._node_by_id, node
-                assert node.data_id == data_id, node
-        assert count_2 == len(node_list)
+                assert node._node_id in self._node_by_id, node
+                assert node._data_id == data_id, node
+        assert clone_count == len(node_list)
         return True
 
 
@@ -319,7 +451,7 @@ class _SystemRootNode(Node):
 
     def __init__(self, tree: Tree):
 
-        self.tree: Tree = tree
+        self._tree: Tree = tree
         self._parent = None
-        self.node_id = self.data_id = self.data = "__root__"
-        self.children = []
+        self._node_id = self._data_id = self._data = "__root__"
+        self._children = []

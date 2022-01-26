@@ -99,7 +99,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'nutree'
-copyright = u'2020-2021, <a href="https://wwwendt.de">Martin Wendt</a>'
+copyright = u'2021-2022, <a href="https://wwwendt.de">Martin Wendt</a>'
 author = u'Martin Wendt'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -151,6 +151,7 @@ exclude_patterns = ['_build', 'build', 'dist']
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
 #add_module_names = True
+add_module_names = False
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
@@ -460,3 +461,11 @@ napoleon_use_admonition_for_references = False
 napoleon_use_ivar = False
 napoleon_use_param = False
 napoleon_use_rtype = False
+
+# -- Extension configuration -------------------------------------------------
+autosummary_generate = True
+autodoc_default_options = {
+    'members': True,
+    'inherited-members': True,
+    'exclude-members': 'with_traceback',
+}
