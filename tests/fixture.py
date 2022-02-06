@@ -7,6 +7,7 @@ Test helpers.
 import re
 import time
 import timeit
+from pathlib import Path
 from textwrap import dedent, indent
 from typing import Union
 
@@ -32,14 +33,33 @@ class Department:
         return f"Department<{self.name}>"
 
 
-# class Item:
-#     def __init__(self, name, price, count):
-#         self.name = name
-#         self.price = float(price)
-#         self.count = int(count)
+class FileSystemEntry:
+    def __init__(self, name, is_dir, size, mdate):
+        self.name = name
+        self.is_dir = is_dir
+        self.size = int(size)
+        self.mdate = float(mdate)
 
-#     def __repr__(self):
-#         return f"Item<{self.name!r}, {self.price:.2f}$>"
+    def __repr__(self):
+        if self.is_dir:
+            return f"[{self.name}]"
+        return f"{self.name!r}, {self.size:,} bytes"
+
+    @staticmethod
+    def serialize_mapper(node, data):
+        inst = node.data
+        if inst.is_dir:
+            data.update({"n": inst.name, "d": True})
+        else:
+            data.update({"n": inst.name, "s": inst.size})
+        return data
+
+    @staticmethod
+    def deserialize_mapper(parent, data):
+        v = data["v"]
+        if "d" in v:
+            return FileSystemEntry(v["n"], True, 0)
+        return FileSystemEntry(v["n"], False, v["s"])
 
 
 def create_tree(*, style="simple", name="fixture", clones=False, tree=None) -> Tree:
@@ -333,3 +353,24 @@ class Timing:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.elap = time.monotonic() - self.start
         print(f"{self}")
+
+
+def load_tree_from_fs(path: str) -> Tree:
+    path = Path(path)
+    tree = Tree(path)
+
+    def visit(node: Node, pth: Path):
+        for c in pth.iterdir():
+            if c.is_dir():
+                o = FileSystemEntry(f"{c.name}", True, 0, 0)
+                pn = node.add(o)
+                if "." not in c.name:
+                    # Skip system folders
+                    visit(pn, c)
+            else:
+                stat = c.stat()
+                o = FileSystemEntry(c.name, False, stat.st_size, stat.st_mtime)
+                node.add(o)
+
+    visit(tree._root, path)
+    return tree
