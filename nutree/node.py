@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# (c) 2021-2022 Martin Wendt and contributors; see https://github.com/mar10/nutree
+# (c) 2021-2022 Martin Wendt; see https://github.com/mar10/nutree
 # Licensed under the MIT license: https://www.opensource.org/licenses/mit-license.php
 """
 Declare the :class:`~nutree.node.Node` class.
@@ -34,6 +34,17 @@ class Node:
     It is a shallow wrapper around a user data instance, that adds navigation,
     modification, and other functionality.
     """
+
+    # Slots may reduce node size (about 20% smaller):
+    __slots__ = (
+        "__weakref__",  # Allow weak references to Nodes
+        "_children",
+        "_data_id",
+        "_data",
+        "_node_id",
+        "_parent",
+        "_tree",
+    )
 
     def __init__(self, data, *, parent: "Node", data_id=None, node_id=None):
         self._data = data
