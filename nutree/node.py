@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-# (c) 2021-2022 Martin Wendt and contributors; see https://github.com/mar10/nutree
+# (c) 2021-2022 Martin Wendt; see https://github.com/mar10/nutree
 # Licensed under the MIT license: https://www.opensource.org/licenses/mit-license.php
 """
-
+Declare the :class:`~nutree.node.Node` class.
 """
 import re
 from operator import attrgetter
@@ -22,6 +22,7 @@ from .common import (
     UniqueConstraintError,
     _call_traversal_cb,
 )
+from .dot import node_to_dot
 
 
 # ------------------------------------------------------------------------------
@@ -33,6 +34,17 @@ class Node:
     It is a shallow wrapper around a user data instance, that adds navigation,
     modification, and other functionality.
     """
+
+    # Slots may reduce node size (about 20% smaller):
+    __slots__ = (
+        "__weakref__",  # Allow weak references to Nodes
+        "_children",
+        "_data_id",
+        "_data",
+        "_node_id",
+        "_parent",
+        "_tree",
+    )
 
     def __init__(self, data, *, parent: "Node", data_id=None, node_id=None):
         self._data = data
@@ -383,7 +395,7 @@ class Node:
         *,
         before: Union["Node", bool, int, None] = None,
         data_id=None,
-        node_id=None
+        node_id=None,
     ) -> "Node":
         """Append or insert a new subnode.
 
@@ -487,7 +499,7 @@ class Node:
         self,
         new_parent: Union["Node", "Tree"],
         *,
-        before: Union["Node", bool, None] = None
+        before: Union["Node", bool, None] = None,
     ):
         """Move this node before or after `otherNode` ."""
         if new_parent is None:
@@ -619,7 +631,7 @@ class Node:
         *,
         add_self=False,
         method=IterMethod.PRE_ORDER,
-        memo=None
+        memo=None,
     ):
         """Call `callback(node, memo)` for all subnodes.
 
@@ -957,3 +969,27 @@ class Node:
 
             yield (parent_idx, data)
         return
+
+    def to_dot(
+        self,
+        *,
+        add_self=False,
+        single_inst=True,
+        node_mapper=None,
+        edge_mapper=None,
+    ) -> Generator[str, None, None]:
+        """Generate DOT formatted output.
+
+        Args:
+            mapper (method):
+            add_self (bool):
+            single_inst (bool):
+        """
+        res = node_to_dot(
+            self,
+            add_self=add_self,
+            single_inst=single_inst,
+            node_mapper=node_mapper,
+            edge_mapper=edge_mapper,
+        )
+        return res

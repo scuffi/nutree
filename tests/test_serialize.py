@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# (c) 2021-2022 Martin Wendt and contributors; see https://github.com/mar10/nutree
+# (c) 2021-2022 Martin Wendt; see https://github.com/mar10/nutree
 # Licensed under the MIT license: https://www.opensource.org/licenses/mit-license.php
 """
 """
@@ -145,3 +145,24 @@ class TestSerialize:
 
         assert tree._self_check()
         assert tree_2._self_check()
+
+    def test_serialize_dot(self):
+        """Save/load as  object tree with clones."""
+
+        tree = fixture.create_tree(style="simple", clones=True, name="Root")
+
+        # tree.to_dotfile("/Users/martin/Downloads/tree.gv", format="png")
+        # tree.to_dotfile(
+        #     "/Users/martin/Downloads/tree.gv",
+        #     format="png",
+        #     # add_root=False,
+        #     # single_inst=False,
+        # )
+
+        res = [line for line in tree.to_dot()]
+        assert len(res) == 24
+        res = "\n".join(res)
+        print(res)
+        assert '__root__ [label="Root" shape="box"]' in res
+        assert "__root__ -> " in res
+        # assert False

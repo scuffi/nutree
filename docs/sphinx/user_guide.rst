@@ -64,7 +64,7 @@ instance with mehods like
 Read :doc:`ug_clones` for more.
 
 
-**Read the Details:**
+**Read the Details**
 
 .. toctree::
 
@@ -75,4 +75,5 @@ Read :doc:`ug_clones` for more.
     ug_clones
     ug_serialize
     ug_objects
+    ug_graphs
     ug_advanced

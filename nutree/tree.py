@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
+# (c) 2021-2022 Martin Wendt; see https://github.com/mar10/nutree
+# Licensed under the MIT license: https://www.opensource.org/licenses/mit-license.php
+"""
+Declare the :class:`~nutree.tree.Tree` class.
+"""
 import json
+import random
 import threading
+from pathlib import PurePath
 from typing import IO, Any, Dict, Generator, List, Union
 
 from .common import (
@@ -9,6 +16,7 @@ from .common import (
     PredicateCallbackType,
     TraversalCallbackType,
 )
+from .dot import tree_to_dotfile
 from .node import Node
 
 _DELETED_TAG = "<deleted>"
@@ -160,6 +168,11 @@ class Tree:
         """Return the last top-level node."""
         return self._root.last_child
 
+    def get_random_node(self) -> Node:
+        """Return a random node."""
+        nbid = self._node_by_id
+        return nbid[random.choice(list(nbid.keys()))]
+
     def calc_height(self) -> int:
         """Return the maximum depth of all nodes."""
         return self._root.calc_height()
@@ -178,6 +191,12 @@ class Tree:
 
         See Node's :meth:`~nutree.node.Node.iterator` method for details.
         """
+        if method == IterMethod.UNORDERED:
+            return (n for n in self._node_by_id.values())
+        elif method == IterMethod.RANDOM_ORDER:
+            values = list(self._node_by_id.values())
+            random.shuffle(values)
+            return (n for n in values)
         return self._root.iterator(method=method)
 
     __iter__ = iterator
@@ -362,6 +381,45 @@ class Tree:
         """
         obj = json.load(fp)
         return cls._from_list(obj, mapper=mapper)
+
+    def to_dot(
+        self,
+        *,
+        add_root=True,
+        single_inst=True,
+        node_mapper=None,
+        edge_mapper=None,
+    ) -> Generator[str, None, None]:
+        yield from self._root.to_dot(
+            add_self=add_root,
+            single_inst=single_inst,
+            node_mapper=node_mapper,
+            edge_mapper=edge_mapper,
+        )
+
+    def to_dotfile(
+        self,
+        target: Union[IO[str], str, PurePath],
+        *,
+        format=None,
+        add_root=True,
+        single_inst=True,
+        node_mapper=None,
+        edge_mapper=None,
+    ):
+        res = tree_to_dotfile(
+            self,
+            target,
+            format=format,
+            add_root=add_root,
+            single_inst=single_inst,
+            node_mapper=node_mapper,
+            edge_mapper=edge_mapper,
+        )
+        return res
+
+    # def from_dot(self, dot):
+    #     pass
 
     # def on(self, event_name: str, callback):
     #     raise NotImplementedError

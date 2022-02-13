@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# (c) 2021-2022 Martin Wendt and contributors; see https://github.com/mar10/nutree
+# (c) 2021-2022 Martin Wendt; see https://github.com/mar10/nutree
 # Licensed under the MIT license: https://www.opensource.org/licenses/mit-license.php
 """
 """
@@ -134,6 +134,8 @@ class TestNavigate:
         assert let_it_be.get_path(repr="{node.data}", add_self=False) == "/Records"
 
         assert let_it_be.get_top() is records
+
+        assert isinstance(tree.get_random_node(), Node)
 
         assert tree._self_check()
 
@@ -497,6 +499,12 @@ class TestTraversal:
 
         s = ",".join(n.data for n in tree.iterator(IterMethod.LEVEL_ORDER))
         assert s == "A,B,a1,a2,b1,a11,a12,b11"
+
+        s = [n.data for n in tree.iterator(IterMethod.UNORDERED)]
+        assert len(s) == 8
+
+        s = [n.data for n in tree.iterator(IterMethod.RANDOM_ORDER)]
+        assert len(s) == 8
 
     def test_visit(self):
         """

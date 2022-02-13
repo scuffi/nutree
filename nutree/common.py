@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-# (c) 2021-2022 Martin Wendt and contributors; see https://github.com/mar10/nutree
+# (c) 2021-2022 Martin Wendt; see https://github.com/mar10/nutree
 # Licensed under the MIT license: https://www.opensource.org/licenses/mit-license.php
 """
-Stress-test your web app.
+Functions and declarations used by the :mod:`nutree.tree` and :mod:`nutree.node`
+modules.
 """
 import warnings
 from enum import Enum
@@ -39,6 +40,11 @@ class IterMethod(Enum):
     POST_ORDER = "post"
     #: Breadth-first (aka level-order)
     LEVEL_ORDER = "level"
+    #: Random order traversal
+    RANDOM_ORDER = "random"
+    #: Fastest traversal in unpredictable order.
+    #: It may appear to be the order of node insertion, but do not rely on this!
+    UNORDERED = "unordered"
 
 
 class IterationControl(Exception):
@@ -61,7 +67,7 @@ class StopTraversal(IterationControl):
         self.value = value
 
 
-#: Node connector prefixes, for use with ``style`` argument.
+#: Node connector prefixes, for use with ``format(style=...)`` argument.
 CONNECTORS = {
     "space2": ("  ", "  ", "  ", "  "),
     "space4": ("    ", " |  ", "    ", "    "),
@@ -79,7 +85,7 @@ CONNECTORS = {
     "round43": ("    ", "│   ", "╰── ", "├── "),
 }
 
-#: Default connector prefixes ``style`` argument.
+#: Default connector prefixes ``format(style=...)`` argument.
 DEFAULT_CONNECTOR_STYLE = "round43"
 
 #: Default value for ``repr`` argument.
