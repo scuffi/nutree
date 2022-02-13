@@ -33,6 +33,14 @@ data_id (int, readonly):
   The unique key of a `data` instance. This value is calculated as ``hash(data)`` 
   by default, but can be set to a custom value. |br|
   Use :meth:`~nutree.node.Node.set_data` to modify this value.
+meta (dict, readonly):
+  `Node` uses `__slots__ <https://docs.python.org/3/reference/datamodel.html?highlight=__slots__#slots>`_ 
+  for memory efficiency.
+  As a side effect, it is not possible to assign new attributes to a node instance. |br|
+  The `meta` slot can be used to attach arbitrary key/value pairs to a node. |br|
+  Use :meth:`~nutree.node.Node.get_meta`, :meth:`~nutree.node.Node.set_meta`, 
+  :meth:`~nutree.node.Node.update_meta`, and :meth:`~nutree.node.Node.clear_meta`,  
+  to modify this value.
 node_id (int, readonly):
   The unique key of a `Node` instance. This value is calculated as ``hash(node)`` 
   by default, but can be set to a custom value in the constructor.

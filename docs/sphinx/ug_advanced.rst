@@ -53,5 +53,5 @@ When optimizing:
      before starting to optimize.
 
   2. Do not guess or assume: |br|
-     write `benchmarks <https://github.com/mar10/nutree/blob/main/tests/test_bench.py>`_ !
+     Write `benchmarks <https://github.com/mar10/nutree/blob/main/tests/test_bench.py>`_ !
 

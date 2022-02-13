@@ -41,12 +41,15 @@ class Node:
         "_children",
         "_data_id",
         "_data",
+        "_meta",
         "_node_id",
         "_parent",
         "_tree",
     )
 
-    def __init__(self, data, *, parent: "Node", data_id=None, node_id=None):
+    def __init__(
+        self, data, *, parent: "Node", data_id=None, node_id=None, meta: Dict = None
+    ):
         self._data = data
         self._parent: Node = parent
 
@@ -63,6 +66,8 @@ class Node:
             self._node_id: int = id(self)
         else:
             self._node_id = node_id
+
+        self._meta = meta
 
         tree._register(self)
 
@@ -138,6 +143,51 @@ class Node:
     def node_id(self):
         """Return the node's unique key."""
         return self._node_id
+
+    @property
+    def meta(self) -> Union[Dict, None]:
+        """Return the node's metadata dictionary or None if empty.
+
+        See also :meth:`get_meta`, :meth:`set_meta`, :meth:`update_meta`,
+        :meth:`clear_meta`.
+        """
+        return self._meta
+
+    def get_meta(self, key: str, default=None):
+        """Return metadata value."""
+        m = self._meta
+        return default if m is None else m.get(key, default)
+
+    def set_meta(self, key: str, value) -> None:
+        """Set metadata value (pass value `None` to remove)."""
+        if value is None:
+            self.clear_meta(key)
+        elif self._meta is None:
+            self._meta = {key: value}
+        else:
+            self._meta[key] = value
+
+    def clear_meta(self, key: str = None):
+        """Reset all metadata or a distinct entry."""
+        if key is None:
+            self._meta = None
+            return
+        m = self._meta
+        if m is not None:
+            m.pop(key, None)
+            if len(m) == 0:
+                self._meta = None
+        return
+
+    def update_meta(self, values: dict, *, replace: bool = False):
+        """Add `values` dict to current metadata.
+
+        If `replace` is true, previous metatdata will be cleared.
+        """
+        if replace or self._meta is None:
+            self._meta = values.copy()
+        else:
+            self._meta.update(values)
 
     def rename(self, new_name: str) -> None:
         """Set `self.data` to a new string (assuming plain string node)."""
@@ -735,7 +785,7 @@ class Node:
         if add_self and method == IterMethod.POST_ORDER:
             yield self
 
-    #: Implement ``for subnode in node:`` syntax to iterate nodes.
+    #: Implement ``for subnode in node: ...`` syntax to iterate descendant nodes.
     __iter__ = iterator
 
     def _filter(self, match, *, max_results=None, add_self=False):

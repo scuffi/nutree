@@ -49,6 +49,32 @@ class TestBasics:
             """,
         )
 
+    def test_meta(aelf):
+        tree = fixture.create_tree()
+        node = tree.first_child
+
+        assert node._meta is None
+
+        node.set_meta("foo", 42)
+        assert node._meta == {"foo": 42}
+
+        node.set_meta("bar", "baz")
+        assert node._meta == {"foo": 42, "bar": "baz"}
+
+        assert node.get_meta("foo") == 42
+
+        node.update_meta({"qux": False})
+        assert node._meta == {"foo": 42, "bar": "baz", "qux": False}
+
+        node.update_meta({"qux": True, "bar": "new"}, replace=True)
+        assert node._meta == {"bar": "new", "qux": True}
+
+        node.set_meta("bar", None)
+        assert node._meta == {"qux": True}
+
+        node.clear_meta("qux")
+        assert node._meta is None, "reset empty meta dict to None"
+
 
 class TestNavigate:
     def setup_method(self):

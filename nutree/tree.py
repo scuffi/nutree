@@ -10,6 +10,8 @@ import threading
 from pathlib import PurePath
 from typing import IO, Any, Dict, Generator, List, Union
 
+from nutree.diff import diff_tree
+
 from .common import (
     AmbigousMatchError,
     IterMethod,
@@ -199,6 +201,7 @@ class Tree:
             return (n for n in values)
         return self._root.iterator(method=method)
 
+    #: Implement ``for node in tree: ...`` syntax to iterate nodes depth-first.
     __iter__ = iterator
 
     def format_iter(self, *, repr=None, style=None, title=None):
@@ -420,6 +423,10 @@ class Tree:
 
     # def from_dot(self, dot):
     #     pass
+
+    def diff(self, other: "Tree") -> "Tree":
+        t = diff_tree(self, other)
+        return t
 
     # def on(self, event_name: str, callback):
     #     raise NotImplementedError
