@@ -48,7 +48,7 @@ class Tree:
         self._calc_data_id_hook = calc_data_id
 
     def __repr__(self):
-        return f"Tree<{self.name!r}>"
+        return f"{self.__class__.__name__}<{self.name!r}>"
 
     def __contains__(self, data):
         """Implement ``data in tree`` syntax to check for node existence."""

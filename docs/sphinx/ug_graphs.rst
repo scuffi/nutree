@@ -4,12 +4,48 @@ Graphs
 
 .. py:currentmodule:: nutree
 
-.. rubric:: Writing Digraphs
-
-
 A tree is a `directed graph <https://en.wikipedia.org/wiki/Directed_graph>`_
 (aka `digraph`). |br|
-Accordingly every tree can be visualized in a graph diagram.
+Accordingly every tree can be visualized in a graph diagram:
+
+- every tree node becomes a graph node
+- parent- and child nodes are connected by an arrow (aka 'edge') pointing from 
+  parent to child, meaning 'is child of'
+
+Every tree is a digraph, however not every digraph can be directly represented 
+as tree, because `arbitrary` directed graphs 
+
+1. may contain closed circles (i.e. the graph is not 'acyclic')
+2. may have loops (arrows that directly connect nodes to themselves), which
+    is a special case of 1.)
+3. may have multiple arrows with same source and target nodes
+4. may not have an obvious root node (i.e. the graph is not 'rooted')
+5. may be the target of more than one arrow
+6. may have other edge semantics as 'child of'
+
+As a consequence
+
+1. Circles would result in trees of infinite depth. We stop adding a
+    child node if it already appears as its own parent.
+2. See 1.): we do not add a node as child of itself.
+3. We do not allow to add the same node a second time under one parent.
+4. We pick the first node, or search for a good candidate using heuristics.
+5. This node appears multiple times as child of different parents.
+
+
+Typed Tree
+----------
+
+The :class:`~nutree.typed_tree.TypedTree` class is a variant.
+
+:doc:`~nutree.typed_tree.TypedTree` class is a variant.
+
+
+
+.. rubric:: Writing Digraphs
+
+DOT Format
+----------
 
 Nutree implements conversion to `DOT format <https://en.wikipedia.org/wiki/DOT_(graph_description_language)>`_.
 Given this tree ::
@@ -128,24 +164,3 @@ Let's visualize the result of the :ref:`Diff and Merge` example::
         Writing of plain DOT formats is natively implemented by `nutree`. |br|
         Reading of DOT formats requires the 
         `pydot <https://github.com/pydot/pydot>`_ library to be installed. |br|
-
-    Every tree is a digraph, however not every digraph can be directly represented 
-    as tree, because arbitrary directed graphs 
-
-    1. may contain closed circles (i.e. the graph is not 'acyclic')
-    2. may have loops (arrows that directly connect nodes to themselves), which
-        is a special case of 1.)
-    3. may have multiple arrows with same source and target nodes
-    4. may not have an obvious root node (i.e. the graph is not 'rooted')
-    5. may be the target of more than one arrow
-    6. may have other edge semantics as 'child of'
-
-    As a consequence, 
-
-    1. Circles would result in trees of infinite depth. We stop adding a
-        child node if it already appears as its own parent.
-    2. See 1.): we do not add a node as child of itself.
-    3. We do not allow to add the same node a second time under one parent.
-    4. We pick the first node, or search for a good candidate using heuristics.
-    5. This node appears multiple times as child of different parents.
-    6. TODO:

@@ -12,6 +12,7 @@ from textwrap import dedent, indent
 from typing import List, Union
 
 from nutree.tree import Node, Tree
+from nutree.typed_tree import TypedNode, TypedTree
 
 
 class Person:
@@ -132,7 +133,10 @@ def flatten_nodes(tree):
 
 def canonical_repr(obj: Union[str, Tree, Node], *, repr=None, style="ascii32") -> str:
     if repr is None:
-        repr = "{node.data}"
+        if isinstance(obj, (TypedTree, TypedNode)):
+            repr = "{node.type} → {node.data}"
+        else:
+            repr = "{node.data}"
     if isinstance(obj, (Node, Tree)):
         res = obj.format(repr=repr, style=style)
     else:

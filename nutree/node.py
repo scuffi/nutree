@@ -1065,19 +1065,23 @@ class Node:
     def _get_prefix(self, style, lstrip):
         s0, s1, s2, s3 = style
 
+        def _is_last(p):
+            # Don't use `is_last_sibling()` which is overloaded by TypedNode
+            return p is p._parent._children[-1]
+
         parts = []
         depth = 0
         for p in self.get_parent_list():
             depth += 1
             if depth <= lstrip:
                 continue
-            if p.is_last_sibling():
+            if _is_last(p):
                 parts.append(s0)  # "    "
             else:
                 parts.append(s1)  # " |  "
 
         if depth >= lstrip:
-            if self.is_last_sibling():
+            if _is_last(self):
                 parts.append(s2)  # " ╰─ "
             else:
                 parts.append(s3)  # " ├─ "
