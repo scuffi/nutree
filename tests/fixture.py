@@ -4,7 +4,9 @@
 """
 Test helpers.
 """
+import os
 import re
+import tempfile
 import time
 import timeit
 from random import randint
@@ -134,7 +136,7 @@ def flatten_nodes(tree):
 def canonical_repr(obj: Union[str, Tree, Node], *, repr=None, style="ascii32") -> str:
     if repr is None:
         if isinstance(obj, (TypedTree, TypedNode)):
-            repr = "{node.type} → {node.data}"
+            repr = "{node.relation} → {node.data}"
         else:
             repr = "{node.data}"
     if isinstance(obj, (Node, Tree)):
@@ -349,6 +351,34 @@ def run_timings(
             0,
         )
     return result
+
+
+class WritableTempFile:
+    """
+    Avoid "Permission denied error" on Windows:
+      with tempfile.NamedTemporaryFile("w", suffix=".gv") as temp_file:
+        # Not writable on Windows:
+        # https://docs.python.org/3/library/tempfile.html#tempfile.NamedTemporaryFile
+
+    Example:
+        with WritableTempFile("w", suffix=".gv") as temp_file:
+            tree.to_dotfile(temp_file.name)
+    """
+
+    def __init__(self, mode="w", *, encoding=None, suffix=None):
+        self.mode = mode
+        self.encoding = encoding
+        self.suffix = suffix
+
+    def __enter__(self):
+        self.temp_file = tempfile.NamedTemporaryFile(
+            self.mode, encoding=self.encoding, suffix=self.suffix, delete=False
+        )
+        return self.temp_file
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.temp_file.close()
+        os.unlink(self.temp_file.name)
 
 
 class Timing:
