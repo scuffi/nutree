@@ -4,6 +4,14 @@ Graphs
 
 .. py:currentmodule:: nutree
 
+.. note::
+    :class:`~nutree.tree.Tree` (and :class:`~nutree.typed_tree.TypedTree` even 
+    more so) have features that make mapping to a graph easy. 
+    However it still is a `tree` at heart. |br|
+    If you are looking for a data model with full graph support, links between 
+    arbitrary nodes, advanced navigation methods, or SPARQL queries,have a look
+    at specialzed libraries,such as `rdflib <https://github.com/RDFLib/rdflib>`_ .
+
 In graph theory, :class:`~nutree.tree.Tree` is a 
 `Rooted Tree <https://en.wikipedia.org/wiki/Tree_(graph_theory)#Rooted_tree>`_
 which is a subform of a
@@ -17,7 +25,7 @@ Accordingly every tree can be visualized in a graph diagram:
 - Parent- and child nodes are connected by an arrow (aka 'edge') pointing from 
   parent to child, meaning 'is child of'.
 
-Whoe vvery tree is a digraph, not every digraph can be directly represented 
+While every tree is a digraph, not every digraph can be directly represented 
 as tree, because `arbitrary` directed graphs 
 
 1. may contain closed circles (i.e. the graph is not 'acyclic')
@@ -49,9 +57,9 @@ The :class:`~nutree.typed_tree.TypedTree` class is a variant derived from
 :class:`~nutree.tree.Tree` that introduces the concept of `typed nodes`. |br|
 It adds a new ``node.relation`` attribute and modifies some methods to access 
 children by that type. |br|
-`TypedTree nodes can have multiple types of children.`
+In a nutshell: `TypedTree nodes can have multiple types of children.`
 
-Main differences:
+Main differences to plain `Tree`:
 
     - Uses :class:`~nutree.typed_tree.TypedNode` that adds an additional 
       ``node.relation`` attribute.
@@ -69,6 +77,7 @@ Main differences:
       pointing from the parent to this node.
 
 Note:
+
     - Methods like :meth:`~nutree.typed_tree.TypedNode.iter` still access all 
       nodes, ignoring the types.
 
@@ -119,15 +128,10 @@ data objects, so these `clones` could exist at different locations of tree:
 for example 'friends → Alice', and 'friends → Alice'.
 
 .. note::
-    :class:`~nutree.typed_tree.TypedTree` adds a feature that makes mapping to 
-    a digraph easy. However it is still a `tree` at heart:
-
-
-    The node type only affects parent → child relations: arbitrary links are not 
-    supported and advanced navigation methods or SPARQL queries are not 
-    implemented. |br|
+    :class:`~nutree.typed_tree.TypedTree`'s node type only affects 
+    parent → child relations. Arbitrary links are not supported.
     If you are looking for a data model with full graph support have a look
-    at specialzed libraries,such as `rdflib <https://github.com/RDFLib/rdflib>`_ .
+    at specialzed libraries,such as `rdflib <https://github.com/RDFLib/rdflib>`_.
 
 
 .. rubric:: Writing Digraphs

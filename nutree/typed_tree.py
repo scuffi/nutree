@@ -553,8 +553,7 @@ class TypedNode(Node):
         """
 
         def _node_mapper(node, data):
-            if node._parent:
-                data["label"] = f"{node.data}"
+            data["label"] = f"{node.data}"
             if node_mapper:
                 return node_mapper(node, data)
 
@@ -582,23 +581,7 @@ class TypedTree(Tree):
     """
     A special tree variant, derived from :class:`~nutree.tree.Tree`.
 
-    It adds a new `node.relation` attribute, and methods access children by that relation.
-
-    Main differences are:
-
-        - Node names are prefixed by their relation, e.g. `"{TYPE}:NAME"`.
-        - Uses :class:`~nutree.typed_tree.TypedNode` instead of :class:`~nutree.node.Node`.
-        - Node methods like :meth:`nutree.typed_tree.TypedNode.children()` get
-          an additional mandatory argument ``relation``. Pass ``relation=ANY_NODE_TYPE``
-        - Node methods like :meth:`nutree.typed_tree.TypedNode.get_index()` get
-          an additional argument ``any_type`` that defaults to salse.
-
-        - Node properties like :meth:`nutree.typed_tree.TypedNode.first_sibling`
-          implicitly assume '... of the same relation'.
-
-    Note:
-        - Methods like :meth:`iter` still access all nodes, ignoring the types.
-
+    See :ref:`Typed Tree` for details.
     """
 
     def __init__(self, name: str = None, *, factory=None, calc_data_id=None):
@@ -652,7 +635,8 @@ class _SystemRootTypedNode(TypedNode):
 
         self._tree: TypedTree = tree
         self._parent = None
-        self._node_id = self._data_id = self._data = "__root__"
+        self._node_id = self._data_id = "__root__"
+        self._data = tree.name
         self._children = []
         self._meta = None
         self._relation = None

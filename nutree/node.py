@@ -369,6 +369,10 @@ class Node:
 
     # --------------------------------------------------------------------------
 
+    def is_system_root(self) -> bool:
+        """Return true if this node is the invisible system root :class:`~nutree.tree._SystemRootNode`."""
+        return self._parent is None
+
     def is_top(self) -> bool:
         """Return true if this node has no parent."""
         return self._parent._parent is None

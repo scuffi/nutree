@@ -560,6 +560,7 @@ class _SystemRootNode(Node):
 
         self._tree: Tree = tree
         self._parent = None
-        self._node_id = self._data_id = self._data = "__root__"
+        self._node_id = self._data_id = "__root__"
+        self._data = tree.name
         self._children = []
         self._meta = None
