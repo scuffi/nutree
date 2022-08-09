@@ -55,25 +55,25 @@ Typed Tree
 
 The :class:`~nutree.typed_tree.TypedTree` class is a variant derived from
 :class:`~nutree.tree.Tree` that introduces the concept of `typed nodes`. |br|
-It adds a new ``node.relation`` attribute and modifies some methods to access 
+It adds a new ``node.kind`` attribute and modifies some methods to access 
 children by that type. |br|
 In a nutshell: `TypedTree nodes can have multiple types of children.`
 
 Main differences to plain `Tree`:
 
     - Uses :class:`~nutree.typed_tree.TypedNode` that adds an additional 
-      ``node.relation`` attribute.
-    - The relation is part of the display name by default:
-      ``repr="{node.relation} → {node.data}"``, e.g. 'person → Alice'.
+      ``node.kind`` attribute.
+    - The kind is part of the display name by default:
+      ``repr="{node.kind} → {node.data}"``, e.g. 'person → Alice'.
     - Node methods like :meth:`~nutree.typed_tree.TypedNode.children()` get
-      an additional mandatory argument ``relation`` to filter by type.s
-      Pass ``relation=ANY_TYPE`` to retrieve all children.
+      an additional mandatory argument ``kind`` to filter by type.s
+      Pass ``kind=ANY_TYPE`` to retrieve all children.
     - Node methods like :meth:`~nutree.typed_tree.TypedNode.get_index()` 
       assume get '... of the same type'. An additional argument ``any_type=True`` 
       can be passed to ignore the types.
     - Node properties like :meth:`~nutree.typed_tree.TypedNode.first_sibling`
       implicitly assume '... of the same type'.
-    - When converting to a graph, `node.relation` becomes the label of the arrow
+    - When converting to a graph, `node.kind` becomes the label of the arrow
       pointing from the parent to this node.
 
 Note:
@@ -85,17 +85,17 @@ When adding nodes, we now pass this type, e.g.::
 
     tree = TypedTree("Pencil")
 
-    func = tree.add("Write on paper", relation="function")
-    fail = func.add("Wood shaft breaks", relation="failure")
-    fail.add("Unable to write", relation="effect")
-    fail.add("Injury from splinter", relation="effect")
-    fail.add("Wood too soft", relation="cause")
+    func = tree.add("Write on paper", kind="function")
+    fail = func.add("Wood shaft breaks", kind="failure")
+    fail.add("Unable to write", kind="effect")
+    fail.add("Injury from splinter", kind="effect")
+    fail.add("Wood too soft", kind="cause")
 
-    fail = func.add("Lead breaks", relation="failure")
-    fail.add("Cannot erase (dissatisfaction)", relation="effect")
-    fail.add("Lead material too brittle", relation="cause")
+    fail = func.add("Lead breaks", kind="failure")
+    fail.add("Cannot erase (dissatisfaction)", kind="effect")
+    fail.add("Lead material too brittle", kind="cause")
 
-    func = tree.add("Erase text", relation="function")
+    func = tree.add("Erase text", kind="function")
     ...
     tree.print()
 

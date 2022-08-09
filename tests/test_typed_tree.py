@@ -19,7 +19,7 @@ class TestTypedTree:
         assert f"{tree}" == "TypedTree<'fixture'>"
         assert isinstance(tree._root, _SystemRootTypedNode)
 
-        func = tree.add("func1", relation="function")
+        func = tree.add("func1", kind="function")
 
         assert isinstance(func, TypedNode)
         assert (
@@ -27,17 +27,17 @@ class TestTypedTree:
             == "TypedNode<'function → func1', data_id=*>"
         )
 
-        fail1 = func.add("fail1", relation="failure")
+        fail1 = func.add("fail1", kind="failure")
 
-        fail1.add("cause1", relation="cause")
-        fail1.add("cause2", relation="cause")
+        fail1.add("cause1", kind="cause")
+        fail1.add("cause2", kind="cause")
 
-        fail1.add("eff1", relation="effect")
-        fail1.add("eff2", relation="effect")
+        fail1.add("eff1", kind="effect")
+        fail1.add("eff2", kind="effect")
 
-        func.add("fail2", relation="failure")
+        func.add("fail2", kind="failure")
 
-        func = tree.add("func2", relation="function")
+        func = tree.add("func2", kind="function")
 
         assert fixture.check_content(
             tree,
@@ -54,23 +54,23 @@ class TestTypedTree:
            """,
         )
 
-        assert fail1.first_child(relation="cause").name == "cause → cause1"
-        assert fail1.last_child(relation="cause").name == "cause → cause2"
-        assert fail1.first_child(relation="effect").name == "effect → eff1"
-        assert fail1.last_child(relation="effect").name == "effect → eff2"
-        assert fail1.first_child(relation=ANY_TYPE).name == "cause → cause1"
-        assert fail1.last_child(relation=ANY_TYPE).name == "effect → eff2"
+        assert fail1.first_child(kind="cause").name == "cause → cause1"
+        assert fail1.last_child(kind="cause").name == "cause → cause2"
+        assert fail1.first_child(kind="effect").name == "effect → eff1"
+        assert fail1.last_child(kind="effect").name == "effect → eff2"
+        assert fail1.first_child(kind=ANY_TYPE).name == "cause → cause1"
+        assert fail1.last_child(kind=ANY_TYPE).name == "effect → eff2"
 
-        assert len(fail1.children(relation=ANY_TYPE)) == 4
-        assert len(fail1.children(relation="cause")) == 2
-        assert fail1.children(relation="unknown") == []
+        assert len(fail1.children(kind=ANY_TYPE)) == 4
+        assert len(fail1.children(kind="cause")) == 2
+        assert fail1.children(kind="unknown") == []
 
         cause2 = tree["cause2"]
         assert cause2.get_siblings(any_type=True, add_self=True) == fail1.children(
-            relation=ANY_TYPE
+            kind=ANY_TYPE
         )
-        assert cause2.get_siblings() != fail1.children(relation=ANY_TYPE)
-        assert cause2.get_siblings(add_self=True) == fail1.children(relation="cause")
+        assert cause2.get_siblings() != fail1.children(kind=ANY_TYPE)
+        assert cause2.get_siblings(add_self=True) == fail1.children(kind="cause")
 
     def test_graph(self):
         tree = TypedTree("fixture")
@@ -78,13 +78,13 @@ class TestTypedTree:
         alice = tree.add("Alice")
         bob = tree.add("Bob")
 
-        alice.add("Carol", relation="friends")
+        alice.add("Carol", kind="friends")
 
-        alice.add("Bob", relation="family")
-        bob.add("Alice", relation="family")
-        bob.add("Dan", relation="friends")
+        alice.add("Bob", kind="family")
+        bob.add("Alice", kind="family")
+        bob.add("Dan", kind="friends")
 
-        # carol.add(bob, relation="friends")
+        # carol.add(bob, kind="friends")
 
         assert fixture.check_content(
             tree,
@@ -115,17 +115,17 @@ class TestTypedTree:
     def test_graph_product(self):
         tree = TypedTree("Pencil")
 
-        func = tree.add("Write on paper", relation="function")
-        fail = func.add("Wood shaft breaks", relation="failure")
-        fail.add("Unable to write", relation="effect")
-        fail.add("Injury from splinter", relation="effect")
-        fail.add("Wood too soft", relation="cause")
+        func = tree.add("Write on paper", kind="function")
+        fail = func.add("Wood shaft breaks", kind="failure")
+        fail.add("Unable to write", kind="effect")
+        fail.add("Injury from splinter", kind="effect")
+        fail.add("Wood too soft", kind="cause")
 
-        fail = func.add("Lead breaks", relation="failure")
-        fail.add("Cannot erase (dissatisfaction)", relation="effect")
-        fail.add("Lead material too brittle", relation="cause")
+        fail = func.add("Lead breaks", kind="failure")
+        fail.add("Cannot erase (dissatisfaction)", kind="effect")
+        fail.add("Lead material too brittle", kind="cause")
 
-        func = tree.add("Erase text", relation="function")
+        func = tree.add("Erase text", kind="function")
 
         assert fixture.check_content(
             tree,
