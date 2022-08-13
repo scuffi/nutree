@@ -8,7 +8,7 @@ import json
 import random
 import threading
 from pathlib import PurePath
-from typing import IO, Any, Dict, Generator, List, Union
+from typing import IO, Any, Dict, Generator, Generic, List, TypeVar, Union
 
 from nutree.diff import diff_tree
 
@@ -21,16 +21,18 @@ from .common import (
     call_mapper,
 )
 from .dot import tree_to_dotfile
-from .node import Node
+from .node import GenericNode, Node
 from .rdf import tree_to_rdf
 
 _DELETED_TAG = "<deleted>"
+
+T = TypeVar("T")
 
 
 # ------------------------------------------------------------------------------
 # - Tree
 # ------------------------------------------------------------------------------
-class Tree:
+class Tree(Generic[T]):
     """
     A Tree object is a shallow wrapper around a single, invisible system root node.
     All visible toplevel nodes are direct children of this root node.
@@ -40,13 +42,16 @@ class Tree:
     def __init__(self, name: str = None, *, factory=None, calc_data_id=None):
         self._lock = threading.RLock()
         self.name = str(id(self) if name is None else name)
-        self._node_factory = factory or Node
+        self._node_factory = GenericNode[T]  # factory or Node
         self._root = _SystemRootNode(self)
         self._node_by_id = {}
         self._nodes_by_data_id = {}
         #: Optional callback that calculates data_ids from data objects
         #: hash(data) is used by default
         self._calc_data_id_hook = calc_data_id
+
+    def aa_plain(self):
+        pass
 
     def __repr__(self):
         return f"{self.__class__.__name__}<{self.name!r}>"
@@ -71,7 +76,7 @@ class Tree:
     def __eq__(self, other) -> bool:
         raise NotImplementedError("Use `is` or `tree.compare()` instead.")
 
-    def __getitem__(self, data: object) -> "Node":
+    def __getitem__(self, data: object) -> T:
         """Implement ``tree[data]`` syntax to lookup a node.
 
         `data` may be a plain string, data object, data_id, or node_id.
@@ -83,7 +88,7 @@ class Tree:
         are found.
         Use :meth:`find_all` or :meth:`find_first` instead to resolve this.
         """
-        if isinstance(data, Node):
+        if isinstance(data, Tree):
             raise ValueError(f"Expected data instance, data_id, or node_id: {data}")
 
         # Support node_id lookup
@@ -130,7 +135,7 @@ class Tree:
             return self._calc_data_id_hook(self, data)
         return hash(data)
 
-    def _register(self, node: "Node"):
+    def _register(self, node: T):
         assert node._tree is self
         # node._tree = self
         assert node._node_id and node._node_id not in self._node_by_id, f"{node}"
@@ -191,7 +196,7 @@ class Tree:
         """Return the last toplevel node."""
         return self._root.last_child()
 
-    def get_random_node(self) -> Node:
+    def get_random_node(self) -> T:
         """Return a random node.
 
         Note that there is also `IterMethod.RANDOM_ORDER`.
@@ -252,13 +257,13 @@ class Tree:
 
     def add_child(
         self,
-        child: Union["Node", "Tree", Any],
+        child: Union[T, "Tree[T]", Any],
         *,
-        before: Union["Node", bool, int, None] = None,
+        before: Union[T, bool, int, None] = None,
         deep: bool = None,
         data_id=None,
         node_id=None,
-    ) -> "Node":
+    ) -> T:
         """Add a toplevel node.
 
         See Node's :meth:`~nutree.node.Node.add_child` method for details.
@@ -276,7 +281,7 @@ class Tree:
 
     def copy(
         self, *, name: str = None, predicate: PredicateCallbackType = None
-    ) -> "Tree":
+    ) -> "Tree[T]":
         """Return a copy of this tree.
 
         New :class:`Tree` and :class:`Node` instances are created.
@@ -298,7 +303,7 @@ class Tree:
         """
         self._root.filter(predicate=predicate)
 
-    def filtered(self, predicate: PredicateCallbackType) -> "Tree":
+    def filtered(self, predicate: PredicateCallbackType) -> "Tree[T]":
         """Return a filtered copy of this tree.
 
         See also :ref:`iteration callbacks`.
@@ -311,7 +316,7 @@ class Tree:
 
     def find_all(
         self, data=None, *, match=None, data_id=None, max_results: int = None
-    ) -> List["Node"]:
+    ) -> List[T]:
         """Return a list of matching nodes (list may be empty).
 
         See also Node's :meth:`~nutree.node.Node.find_all` method and
@@ -335,7 +340,7 @@ class Tree:
 
     def find_first(
         self, data=None, *, match=None, data_id=None, node_id=None
-    ) -> Union["Node", None]:
+    ) -> Union[T, None]:
         """Return the one matching node or `None`.
 
         Note that 'first' sometimes means 'one arbitrary' matching node, which
@@ -380,7 +385,7 @@ class Tree:
         return res
 
     @classmethod
-    def from_dict(cls, obj: List[Dict], *, mapper=None) -> "Tree":
+    def from_dict(cls, obj: List[Dict], *, mapper=None) -> "Tree[T]":
         """Return a new :class:`Tree` instance from a list of dicts.
 
         See also :meth:`~nutree.tree.Tree.to_dict` and
@@ -411,7 +416,7 @@ class Tree:
         return
 
     @classmethod
-    def _from_list(cls, obj: List[Dict], *, mapper=None) -> "Tree":
+    def _from_list(cls, obj: List[Dict], *, mapper=None) -> "Tree[T]":
         tree = Tree()
         node_idx_map = {0: tree._root}
         for idx, (parent_idx, data) in enumerate(obj, 1):
@@ -434,7 +439,7 @@ class Tree:
         return tree
 
     @classmethod
-    def load(cls, fp: IO[str], *, mapper=None) -> "Tree":
+    def load(cls, fp: IO[str], *, mapper=None) -> "Tree[T]":
         """Create a new :class:`Tree` instance from a JSON file stream.
 
         See also :meth:`save`.
@@ -509,7 +514,7 @@ class Tree:
         """
         return tree_to_rdf(self)
 
-    def diff(self, other: "Tree", *, ordered=False, reduce=False) -> "Tree":
+    def diff(self, other: "Tree[T]", *, ordered=False, reduce=False) -> "Tree[T]":
         """Compare this tree against `other` and return a merged, annotated copy.
 
         The resulting tree contains a union of all nodes from this and the
@@ -567,7 +572,7 @@ class Tree:
 class _SystemRootNode(Node):
     """Invisible system root node."""
 
-    def __init__(self, tree: Tree):
+    def __init__(self, tree: Tree[Node]):
 
         self._tree: Tree = tree
         self._parent = None

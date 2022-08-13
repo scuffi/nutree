@@ -4,6 +4,7 @@
 """
 """
 import re
+from ..nutree.tree import Tree
 
 from nutree.typed_tree import ANY_KIND, TypedNode, TypedTree, _SystemRootTypedNode
 
@@ -319,3 +320,7 @@ class TestTypedTree:
 
         assert calls == 3
         # raise
+
+        t = Tree()
+        tt = TypedTree()
+        tt.

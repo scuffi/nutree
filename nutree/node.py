@@ -6,7 +6,7 @@ Declare the :class:`~nutree.node.Node` class.
 """
 import re
 from operator import attrgetter
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, Generic, List, TypeVar, Union
 
 if TYPE_CHECKING:  # Imported by type checkers, but prevent circular includes
     from .tree import Tree
@@ -30,11 +30,13 @@ from .common import (
 from .dot import node_to_dot
 from .rdf import RDFMapperCallbackType, node_to_rdf
 
+T = TypeVar("T")
+
 
 # ------------------------------------------------------------------------------
 # - Node
 # ------------------------------------------------------------------------------
-class Node:
+class GenericNode(Generic[T]):
     """
     A Node represents a single element in the tree.
     It is a shallow wrapper around a user data instance, that adds navigation,
@@ -61,14 +63,14 @@ class Node:
     # # DEFAULT_NAME_REPR = "{node.data}"
 
     def __init__(
-        self, data, *, parent: "Node", data_id=None, node_id=None, meta: Dict = None
+        self, data, *, parent: T, data_id=None, node_id=None, meta: Dict = None
     ):
         self._data = data
-        self._parent: Node = parent
+        self._parent: T = parent
 
         tree = parent._tree
-        self._tree: "Tree" = tree
-        self._children: List[Node] = None
+        self._tree: "Tree[T]" = tree
+        self._children: List[T] = None
 
         if data_id is None:
             self._data_id = tree._calc_data_id(data)
@@ -97,13 +99,13 @@ class Node:
         Use ``node is other`` syntax instead to check if two nodes are truly
         identical.
         """
-        if isinstance(other, Node):
+        if isinstance(other, GenericNode[T]):
             return self._data == other._data
         return self._data == other
 
     # def __iadd__(self, other) -> None:
     #     """Add child node(s)."""
-    #     if isinstance(other, (Node, str)):
+    #     if isinstance(other, (GenericNode[T], str)):
     #         self.add_child(other)
     #     elif isinstance(other, (list, tuple)):
     #         for o in other:
@@ -126,18 +128,18 @@ class Node:
         return self.get_path(repr="{node.name}")
 
     @property
-    def tree(self) -> "Tree":
+    def tree(self) -> "Tree[T]":
         """Return container :class:`~nutree.tree.Tree` instance."""
         return self._tree
 
     @property
-    def parent(self) -> "Node":
+    def parent(self) -> T:
         """Return parent node or None for toplevel nodes."""
         p = self._parent
         return p if p._parent else None
 
     @property
-    def children(self) -> List["Node"]:
+    def children(self) -> List[T]:
         """Return list of direct child nodes (list may be empty)."""
         c = self._children
         return [] if c is None else c
@@ -282,47 +284,47 @@ class Node:
 
         return
 
-    def get_children(self) -> List["Node"]:
+    def get_children(self) -> List[T]:
         """Return list of direct child nodes (list may be empty)."""
         return self.children
 
-    def first_child(self) -> Union["Node", None]:
+    def first_child(self) -> Union[T, None]:
         """First direct childnode or None if no children exist."""
         return self._children[0] if self._children else None
 
-    def last_child(self) -> Union["Node", None]:
+    def last_child(self) -> Union[T, None]:
         """Last direct childnode or None if no children exist."""
         return self._children[-1] if self._children else None
 
-    def get_siblings(self, *, add_self=False) -> List["Node"]:
+    def get_siblings(self, *, add_self=False) -> List[T]:
         """Return a list of all sibling entries of self (excluding self) if any."""
         if add_self:
             return self._parent._children
         return [n for n in self._parent._children if n is not self]
 
-    def first_sibling(self) -> "Node":
+    def first_sibling(self) -> T:
         """Return first sibling (may be self)."""
         return self._parent._children[0]
 
-    def prev_sibling(self) -> Union["Node", None]:
+    def prev_sibling(self) -> Union[T, None]:
         """Predecessor or None, if node is first sibling."""
         if self.is_first_sibling():
             return None
         idx = self._parent._children.index(self)
         return self._parent._children[idx - 1]
 
-    def next_sibling(self) -> Union["Node", None]:
+    def next_sibling(self) -> Union[T, None]:
         """Return successor or None, if node is last sibling."""
         if self.is_last_sibling():
             return None
         idx = self._parent._children.index(self)
         return self._parent._children[idx + 1]
 
-    def last_sibling(self) -> "Node":
+    def last_sibling(self) -> T:
         """Return last node, that share own parent (may be `self`)."""
         return self._parent._children[-1]
 
-    def get_clones(self, *, add_self=False) -> List["Node"]:
+    def get_clones(self, *, add_self=False) -> List[T]:
         """Return a list of all nodes that reference the same data if any."""
         clones = self._tree._nodes_by_data_id[self._data_id]
         if add_self:
@@ -401,14 +403,14 @@ class Node:
         """Return true if this node has one or more children."""
         return bool(self._children)
 
-    def get_top(self) -> "Node":
+    def get_top(self) -> T:
         """Return toplevel ancestor (may be self)."""
         root = self
         while root._parent._parent:
             root = root._parent
         return root
 
-    def is_descendant_of(self, other: "Node") -> bool:
+    def is_descendant_of(self, other: T) -> bool:
         """Return true if this node is direct or indirect child of `other`."""
         parent = self._parent
         while parent is not None and parent._parent is not None:
@@ -417,11 +419,11 @@ class Node:
             parent = parent._parent
         return False
 
-    def is_ancestor_of(self, other: "Node") -> bool:
+    def is_ancestor_of(self, other: T) -> bool:
         """Return true if this node is a parent, grandparent, ... of `other`."""
         return other.is_descendant_of(self)
 
-    def get_common_ancestor(self, other: "Node") -> Union["Node", None]:
+    def get_common_ancestor(self, other: T) -> Union[T, None]:
         """Return the nearest node that contains `self` and `other` (may be None)."""
         if self._tree is other._tree:
             other_parent_set = {
@@ -432,7 +434,7 @@ class Node:
                     return parent
         return None
 
-    def get_parent_list(self, *, add_self=False, bottom_up=False) -> List["Node"]:
+    def get_parent_list(self, *, add_self=False, bottom_up=False) -> List[T]:
         """Return ordered list of all parent nodes."""
         res = []
         parent = self if add_self else self._parent
@@ -452,13 +454,13 @@ class Node:
 
     def add_child(
         self,
-        child: Union["Node", "Tree", Any],
+        child: Union[T, "Tree[T]", Any],
         *,
-        before: Union["Node", bool, int, None] = None,
+        before: Union[T, bool, int, None] = None,
         deep: bool = None,
         data_id=None,
         node_id=None,
-    ) -> "Node":
+    ) -> T:
         """Append or insert a new subnode or branch as child.
 
         If `child` is an existing :class:`~nutree.node.Node` instance, a copy
@@ -510,14 +512,14 @@ class Node:
             if deep is None:
                 deep = True
             topnodes = child._root.children
-            if isinstance(before, (int, Node)) or before is True:
+            if isinstance(before, (int, GenericNode[T])) or before is True:
                 topnodes.reverse()
             for n in topnodes:
                 self.add_child(n, before=before, deep=deep)
             return
 
         source_node = None
-        if isinstance(child, Node):
+        if isinstance(child, GenericNode[T]):
             if deep is None:
                 deep = False
             if deep and data_id is not None or node_id is not None:
@@ -563,7 +565,7 @@ class Node:
 
     def append_child(
         self,
-        child: Union["Node", "Tree", Any],
+        child: Union[T, "Tree[T]", Any],
         *,
         deep=None,
         data_id=None,
@@ -579,7 +581,7 @@ class Node:
 
     def prepend_child(
         self,
-        child: Union["Node", "Tree", Any],
+        child: Union[T, "Tree[T]", Any],
         *,
         deep=None,
         data_id=None,
@@ -599,12 +601,12 @@ class Node:
 
     def prepend_sibling(
         self,
-        child: Union["Node", "Tree", Any],
+        child: Union[T, "Tree[T]", Any],
         *,
         deep=None,
         data_id=None,
         node_id=None,
-    ) -> "Node":
+    ) -> T:
         """Add a new node before `self`.
 
         This method calls :meth:`add_child` on ``self.parent``.
@@ -615,12 +617,12 @@ class Node:
 
     def append_sibling(
         self,
-        child: Union["Node", "Tree", Any],
+        child: Union[T, "Tree[T]", Any],
         *,
         deep=None,
         data_id=None,
         node_id=None,
-    ) -> "Node":
+    ) -> T:
         """Add a new node after `self`.
 
         This method calls :meth:`add_child` on ``self.parent``.
@@ -632,9 +634,9 @@ class Node:
 
     def move(
         self,
-        new_parent: Union["Node", "Tree"],
+        new_parent: Union[T, "Tree[T]"],
         *,
-        before: Union["Node", bool, int, None] = None,
+        before: Union[T, bool, int, None] = None,
     ):
         """Move this node before or after `otherNode` ."""
         if new_parent is None:
@@ -699,7 +701,7 @@ class Node:
         self._children = None
         return
 
-    def copy(self, *, add_self=True, predicate=None) -> "Tree":
+    def copy(self, *, add_self=True, predicate=None) -> "Tree[T]":
         """Return a new :class:`~nutree.tree.Tree` instance from this branch.
 
         See also :meth:`_add_from` and :ref:`iteration callbacks`.
@@ -712,7 +714,7 @@ class Node:
         root._add_from(self, predicate=predicate)
         return new_tree
 
-    def _add_from(self, other: "Node", *, predicate: PredicateCallbackType = None):
+    def _add_from(self, other: T, *, predicate: PredicateCallbackType = None):
         """Append copies of all source descendants to self.
 
         See also :ref:`iteration callbacks`.
@@ -728,7 +730,7 @@ class Node:
                 new_child._add_from(child, predicate=None)
         return
 
-    def _add_filtered(self, other: "Node", predicate: PredicateCallbackType) -> None:
+    def _add_filtered(self, other: T, predicate: PredicateCallbackType) -> None:
         """Append a filtered copy of `other` and its descendants as children.
 
         See also :ref:`iteration callbacks`.
@@ -787,7 +789,7 @@ class Node:
             pass
         return
 
-    def filtered(self, predicate: PredicateCallbackType) -> "Tree":
+    def filtered(self, predicate: PredicateCallbackType) -> "Tree[T]":
         """Return a filtered copy of this node and descendants as tree.
 
         See also :ref:`iteration callbacks`.
@@ -988,7 +990,7 @@ class Node:
 
     def iterator(
         self, method=IterMethod.PRE_ORDER, *, add_self=False
-    ) -> Generator["Node", None, None]:
+    ) -> Generator[T, None, None]:
         """Generator that walks the hierarchy."""
         try:
             handler = getattr(self, f"_iter_{method.value}")
@@ -1287,3 +1289,7 @@ class Node:
         See :ref:`Graphs` for details.
         """
         return node_to_rdf(self, add_self=add_self, node_mapper=node_mapper)
+
+
+class Node(GenericNode["Node"]):
+    """"""

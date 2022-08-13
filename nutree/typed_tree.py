@@ -4,7 +4,7 @@
 """
 Declare the :class:`~nutree.tree.TypedTree` class.
 """
-from typing import Any, Dict, Generator, List, Union
+from typing import Any, Dict, Generator, Generic, List, TypeVar, Union
 
 from nutree.common import (
     IterMethod,
@@ -22,6 +22,7 @@ class ANY_KIND:
 
 
 DEFAULT_CHILD_TYPE = "child"
+T = TypeVar("T")
 
 
 # ------------------------------------------------------------------------------
@@ -60,6 +61,8 @@ class TypedNode(Node):
         # del self._children
         # self._child_map: Dict[Node] = None
 
+    def aa_typed(self):
+        pass
     # def __repr__(self) -> str:
     #     return f"{self.__class__.__name__}<{self.name!r}, data_id={self.data_id}>"
 
@@ -612,7 +615,7 @@ class TypedNode(Node):
 # ------------------------------------------------------------------------------
 # - TypedTree
 # ------------------------------------------------------------------------------
-class TypedTree(Tree):
+class TypedTree(Tree, Generic[T]):
     """
     A special tree variant, derived from :class:`~nutree.tree.Tree`.
 
