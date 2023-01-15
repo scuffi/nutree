@@ -4,7 +4,7 @@
 """
 Implement diff/merge algorithms.
 """
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator
 
 if TYPE_CHECKING:  # Imported by type checkers, but prevent circular includes
     from .tree import Tree, Node
@@ -21,6 +21,54 @@ class DiffClassification(Enum):
 
 #: Alias for DiffClassification
 DC = DiffClassification
+
+
+class ChangeRecorder:
+    """
+    Context manager to collect intermediate tree modifications.
+
+    **Experimental**
+
+    Examples:
+        with tree.change_recorder() as rec:
+            tree["a2"].add("a21")
+            tree["a11"].remove()
+            ...
+
+        rec.get_diff_tree().print(repr=diff_node_formatter)
+        patch = rec.get_patch()
+
+    """
+
+    def __init__(self, tree: "Tree"):
+        self._tree: "Tree" = tree
+        self._org_copy: "Tree" = None
+        self._diff_tree: "Tree" = None
+
+    def __repr__(self):
+        state = "unresolved" if self._diff_tree is None else f"{len(self._diff_tree)}"
+        return f"{self.__class__.__name__}<{self._tree}, delta={state}>"
+
+    def __enter__(self):
+        with self._tree:
+            self._org_copy = self._tree.copy(name=f"Snapshot of {self._tree}")
+        return self
+
+    def __exit__(self, type, value, traceback):
+        # self._diff_tree = self._org_copy.diff(self._tree, reduce=True)
+        self._diff_tree = diff_tree(
+            self._org_copy, self._tree, reduce=True, add_ref_info=True
+        )
+        # self._org_copy = None
+        return
+
+    def get_diff_tree(self) -> "Tree":
+        assert self._diff_tree, "Available after context manager exited."
+        return self._diff_tree
+
+    def get_patch(self) -> list:
+        iter = iter_changes_as_patch(self.get_diff_tree())
+        return list(iter)
 
 
 def _find_child(arr, child):
@@ -80,7 +128,37 @@ def diff_node_formatter(node):
     return s
 
 
-def diff_tree(t0: "Tree", t1: "Tree", *, ordered=False, reduce=False) -> "Tree":
+def diff_tree(
+    t0: "Tree", t1: "Tree", *, ordered=False, reduce=False, add_ref_info=False
+) -> "Tree":
+    """Compare t0 against t1 and return a merged, annotated tree copy.
+
+    The resulting tree ('t2') contains a union of all nodes from t0 and t1.
+    Additional metadata is added to the resulting nodes to classify changes
+    from the perspective of t0. For example a node that only exists
+    in t1, will have ``node.get_meta("dc") == DiffClassification.ADDED``
+    defined.
+
+    Nodes are considered equal if node pairs are located in equivalent structure
+    locations and ``a == b`` resolves to true. |br|
+    If `ordered` is true, changes in the child order are also considered a
+    change.
+
+    If `reduce` is true, unchanged nodes are removed, leaving a compact tree
+    with only the modifications.
+
+    `add_ref_info` adds aditional node references to the meta data, e.g.
+    the parent node for 'add' operations.
+
+    TODO:
+    If the `compare_nodes` argument contains a method, it will be called for
+    every node pair. It must be a method that accepts
+    two `Node` instances and returns a comparison result. |br|
+    A return value of `None` or `False` means 'nodes are equal.
+    Other values are interpreted as 'nodes are unequal'.
+
+    See :ref:`Diff and Merge` for details.
+    """
     from nutree import Tree
 
     t2 = Tree(f"diff({t0.name!r}, {t1.name!r})")
@@ -89,12 +167,13 @@ def diff_tree(t0: "Tree", t1: "Tree", *, ordered=False, reduce=False) -> "Tree":
 
     def compare(p0: "Node", p1: "Node", p2: "Node"):
         p0_data_ids = set()
-        # `p0.children` always returns an (empty) array
+        # `p0.children` always returns an (possibly empty) array
         for i0, c0 in enumerate(p0.children):
             p0_data_ids.add(c0._data_id)
             i1, c1 = _find_child(p1._children, c0)
 
             c2 = p2.add(c0)
+
             if i0 == i1:
                 # Exact match of node and position
                 pass
@@ -107,6 +186,11 @@ def diff_tree(t0: "Tree", t1: "Tree", *, ordered=False, reduce=False) -> "Tree":
                 # t0 node is not found in t1
                 c2.set_meta("dc", DC.REMOVED)
                 removed_nodes.add(c2._node_id)
+                if add_ref_info:
+                    # c2.set_meta("dc_t0_node", c0)
+                    c2.set_meta("dc_t1_parent_node_id", p1.node_id)
+                    c2.set_meta("dc_t1_data_id", c2.data_id)
+                    # c2.set_meta("dc_t1_node_id", c1.node_id)
 
             if c0._children:
                 if c1:
@@ -132,13 +216,16 @@ def diff_tree(t0: "Tree", t1: "Tree", *, ordered=False, reduce=False) -> "Tree":
                     pass
 
         # print(p1, p1._children, p0_data_ids)
+
         # Collect t1 nodes that are not in t0:
-        for c1 in p1.children:  # `p1.children` always returns an (empty) array
+        for c1 in p1.children:  # `p1.children` always returns an (possibly empty) array
             # print("  ", c1, c1._data_id in p0_data_ids)
             if c1._data_id not in p0_data_ids:
                 c2 = p2.add(c1)
                 c2.set_meta("dc", DC.ADDED)
                 added_nodes.add(c2._node_id)
+                if add_ref_info:
+                    c2.set_meta("dc_t1_node", c1)
                 if c1._children:
                     # c1 has children, but c0 does not even exist
                     # TODO: Copy children from c1 to c2, but we need to check
@@ -148,7 +235,7 @@ def diff_tree(t0: "Tree", t1: "Tree", *, ordered=False, reduce=False) -> "Tree":
                     # c1 does not have children and c0 does not exist:
                     # We already marked a 'new', nothing more to do.
                     pass
-        return  # def compare()
+        return  # End of `def compare()`
 
     compare(t0._root, t1._root, t2._root)
 
@@ -175,3 +262,48 @@ def diff_tree(t0: "Tree", t1: "Tree", *, ordered=False, reduce=False) -> "Tree":
         t2.filter(predicate=pred)
 
     return t2
+
+
+def iter_changes_as_patch(tree: "Tree") -> Generator[dict, None, None]:
+    """Yield a sequence of changes.
+
+    **Experimental**
+    Every change is passed as dict.
+
+    Args:
+        tree (Tree): typically the result of a previous call to :meth:`~nutree.tree.Tree.diff`
+    """
+    # Assuming
+    #     t0   is the temporary snapshot copy, that a ChangeRecorder created
+    #     t1   is the original tree instance that now has changes applied
+    #     tree is the temporary diff-tree (shallow, filtered merge of t0 and t1)
+    for node in tree:
+        # flags = []
+        dc = node.get_meta("dc")
+        if dc is None:
+            continue
+        res = {"_key": node.node_id, "_name": node.name}  # , "dc": dc}
+
+        if dc in (DC.ADDED, DC.MOVED_HERE):
+            ref_node = node.get_meta("dc_t1_node")
+            res.update(
+                {
+                    "type": "add",
+                    "node_id": ref_node.node_id if ref_node else None,
+                    "node": ref_node,
+                }
+            )
+        elif dc in (DC.REMOVED, DC.MOVED_TO):
+            # ref_node = node.get_meta("dc_t0_node")
+            res.update(
+                {
+                    "type": "remove",
+                    "parent_id": node.get_meta("dc_t1_parent_node_id"),
+                    "data_id": node.get_meta("dc_t1_data_id"),
+                }
+            )
+        else:
+            continue
+
+        yield res
+    return

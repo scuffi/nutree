@@ -10,7 +10,7 @@ import threading
 from pathlib import PurePath
 from typing import IO, Any, Dict, Generator, List, Union
 
-from nutree.diff import diff_tree
+from nutree.diff import ChangeRecorder, diff_tree
 
 from .common import (
     AmbiguousMatchError,
@@ -234,6 +234,9 @@ class Tree:
     #: Implement ``for node in tree: ...`` syntax to iterate nodes depth-first.
     __iter__ = iterator
 
+    def change_recorder(self) -> ChangeRecorder:
+        return ChangeRecorder(self)
+
     def format_iter(self, *, repr=None, style=None, title=None):
         """This variant of :meth:`format` returns a line generator."""
         if title is None:
@@ -341,10 +344,10 @@ class Tree:
     def find_first(
         self, data=None, *, match=None, data_id=None, node_id=None
     ) -> Union["Node", None]:
-        """Return the one matching node or `None`.
+        """Return one matching node or `None`.
 
-        Note that 'first' sometimes means 'one arbitrary' matching node, which
-        is not neccessarily the first of a specific iteration method.
+        Note that 'first found' sometimes means 'one arbitrary' matching node,
+        which is not neccessarily the first of a specific iteration method.
         See also Node's :meth:`~nutree.node.Node.find_first` method and
         :ref:`iteration callbacks`.
         """
