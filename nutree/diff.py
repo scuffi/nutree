@@ -27,8 +27,6 @@ class ChangeRecorder:
     """
     Context manager to collect intermediate tree modifications.
 
-    **Experimental**
-
     Examples:
         with tree.change_recorder() as rec:
             tree["a2"].add("a21")
@@ -38,6 +36,7 @@ class ChangeRecorder:
         rec.get_diff_tree().print(repr=diff_node_formatter)
         patch = rec.get_patch()
 
+    @experimental
     """
 
     def __init__(self, tree: "Tree"):
@@ -267,11 +266,12 @@ def diff_tree(
 def iter_changes_as_patch(tree: "Tree") -> Generator[dict, None, None]:
     """Yield a sequence of changes.
 
-    **Experimental**
     Every change is passed as dict.
 
     Args:
         tree (Tree): typically the result of a previous call to :meth:`~nutree.tree.Tree.diff`
+
+    @experimental
     """
     # Assuming
     #     t0   is the temporary snapshot copy, that a ChangeRecorder created

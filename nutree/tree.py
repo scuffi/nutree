@@ -235,6 +235,12 @@ class Tree:
     __iter__ = iterator
 
     def change_recorder(self) -> ChangeRecorder:
+        """
+        Return a context manager to collect intermediate tree modifications.
+        See :class:`~nutree.diff.ChangeRecorder`.
+
+        @experimental
+        """
         return ChangeRecorder(self)
 
     def format_iter(self, *, repr=None, style=None, title=None):
