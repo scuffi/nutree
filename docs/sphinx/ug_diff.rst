@@ -129,4 +129,24 @@ holding previous and new child index::
     assert tree_2["a12"].get_meta("dc") == (1, 0)
 
 
+Patches
+-------
 
+.. warning:: 
+    This feature is still experimental.
+
+The :class:`~nutree.diff.ChangeRecorder` can be used to collect modifications
+during a section::
+
+    with tree.change_recorder() as rec:
+        tree["a2"].add("a21")
+        tree["a11"].remove()
+        ...
+
+    # evaluate the result as reduced diff-tree...
+    diff_tree = rec.get_diff_tree()
+    diff_tree.print(repr=diff_node_formatter)
+    
+    # ... or as list of change-dicts
+    patch = rec.get_patch()
+    print(patch)

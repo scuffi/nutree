@@ -36,6 +36,7 @@ class ChangeRecorder:
         rec.get_diff_tree().print(repr=diff_node_formatter)
         patch = rec.get_patch()
 
+    See :ref:`Diff and Merge` for details.
     @experimental
     """
 

@@ -10,7 +10,7 @@ import threading
 from pathlib import PurePath
 from typing import IO, Any, Dict, Generator, List, Union
 
-from nutree.diff import ChangeRecorder, diff_tree
+from nutree.diff import ChangeRecorder, diff_tree, iter_changes_as_patch
 
 from .common import (
     AmbiguousMatchError,
@@ -237,7 +237,7 @@ class Tree:
     def change_recorder(self) -> ChangeRecorder:
         """
         Return a context manager to collect intermediate tree modifications.
-        See :class:`~nutree.diff.ChangeRecorder`.
+        See :class:`~nutree.diff.ChangeRecorder` and :ref:`Diff and Merge` for details.
 
         @experimental
         """
@@ -542,6 +542,17 @@ class Tree:
         """
         t = diff_tree(self, other, ordered=ordered, reduce=reduce)
         return t
+
+    def diff_patch(
+        self, other: "Tree", *, ordered=False
+    ) -> Generator[dict, None, None]:
+        """Compare this tree against `other` and return a sequqnce of change dicts.
+
+        See :ref:`Diff and Merge` for details.
+        @experimental
+        """
+        diff_tree = self.diff(other, ordered=ordered, reduce=True)
+        return iter_changes_as_patch(diff_tree)
 
     # def on(self, event_name: str, callback):
     #     raise NotImplementedError
